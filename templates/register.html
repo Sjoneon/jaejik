@@ -1,0 +1,112 @@
+<!-- ============================================
+     업무 일정 관리 시스템 - 회원가입 페이지
+     위치: C:\Users\user\Desktop\인공지능산업협회AI\templates\register.html
+     ============================================ -->
+{% extends "base.html" %}
+
+{% block title %}회원가입 - 업무 일정 관리{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-box">
+        <div class="auth-header">
+            <h1>📅 회원가입</h1>
+            <p>새 계정을 만들어 일정 관리를 시작하세요</p>
+        </div>
+        
+        <form method="POST" action="{{ url_for('register') }}" class="auth-form">
+            <div class="form-group">
+                <label for="username">사용자명 *</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    required 
+                    minlength="2"
+                    maxlength="50"
+                    placeholder="사용자명 (2자 이상)"
+                    autocomplete="username"
+                >
+            </div>
+            
+            <div class="form-group">
+                <label for="email">이메일 *</label>
+                <input 
+                    type="email" 
+                    id="email" 
+                    name="email" 
+                    required 
+                    placeholder="example@company.com"
+                    autocomplete="email"
+                >
+            </div>
+            
+            <div class="form-group">
+                <label for="password">비밀번호 *</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    required 
+                    minlength="4"
+                    placeholder="비밀번호 (4자 이상)"
+                    autocomplete="new-password"
+                >
+            </div>
+            
+            <div class="form-group">
+                <label for="password_confirm">비밀번호 확인 *</label>
+                <input 
+                    type="password" 
+                    id="password_confirm" 
+                    name="password_confirm" 
+                    required 
+                    minlength="4"
+                    placeholder="비밀번호 다시 입력"
+                    autocomplete="new-password"
+                >
+            </div>
+            
+            <hr style="margin: 1.5rem 0; border-color: #e9ecef;">
+            
+            <p style="font-size: 0.9rem; color: #6c757d; margin-bottom: 1rem;">
+                🏢 회사/팀 코드가 있으면 입력하세요 (선택)
+            </p>
+            
+            <div class="form-group">
+                <label for="company_code">회사 코드</label>
+                <input 
+                    type="text" 
+                    id="company_code" 
+                    name="company_code" 
+                    placeholder="회사 코드 (예: ABC12345)"
+                    maxlength="20"
+                    style="text-transform: uppercase;"
+                >
+            </div>
+            
+            <div class="form-group">
+                <label for="team_code">팀 코드</label>
+                <input 
+                    type="text" 
+                    id="team_code" 
+                    name="team_code" 
+                    placeholder="팀 코드 (예: DEV123)"
+                    maxlength="20"
+                    style="text-transform: uppercase;"
+                >
+            </div>
+            
+            <p style="font-size: 0.8rem; color: #adb5bd; margin-bottom: 1rem;">
+                ※ 코드 없이 가입 후 나중에 설정할 수 있습니다.
+            </p>
+            
+            <button type="submit" class="btn btn-primary btn-full">회원가입</button>
+        </form>
+        
+        <div class="auth-footer">
+            <p>이미 계정이 있으신가요? <a href="{{ url_for('login') }}">로그인</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

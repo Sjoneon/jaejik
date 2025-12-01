@@ -1,0 +1,651 @@
+<!-- ============================================
+     업무 일정 관리 시스템 - 대시보드
+     위치: C:\Users\user\Desktop\인공지능산업협회AI\templates\dashboard.html
+     ============================================ -->
+{% extends "base.html" %}
+
+{% block title %}대시보드 - 업무 일정 관리{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <!-- 상단 영역: 캘린더 + 일정 목록 -->
+    <div class="dashboard-top">
+        <!-- 왼쪽: 캘린더 -->
+        <div class="calendar-section">
+            <div class="section-header">
+                <h2>📆 캘린더</h2>
+            </div>
+            <div id="calendar"></div>
+            <p class="calendar-hint">💡 날짜를 클릭하면 새 일정을 추가할 수 있습니다</p>
+        </div>
+        
+        <!-- 오른쪽: 일정 목록 -->
+        <div class="schedule-section">
+            <div class="section-header">
+                <h2>📋 일정들 (급한순)</h2>
+            </div>
+            <div class="schedule-list" id="schedule-list">
+                {% if schedules %}
+                    {% for schedule in schedules %}
+                    <div class="schedule-item" 
+                         data-id="{{ schedule.id }}"
+                         style="border-left-color: {{ schedule.urgency_color }};">
+                        <div class="schedule-urgency">
+                            {% if schedule.days_left < 0 %}
+                                <span class="urgency-badge overdue">지연</span>
+                            {% elif schedule.days_left <= 2 %}
+                                <span class="urgency-badge urgent">D-{{ schedule.days_left }}</span>
+                            {% elif schedule.days_left <= 5 %}
+                                <span class="urgency-badge soon">D-{{ schedule.days_left }}</span>
+                            {% elif schedule.days_left <= 7 %}
+                                <span class="urgency-badge warning">D-{{ schedule.days_left }}</span>
+                            {% else %}
+                                <span class="urgency-badge normal">D-{{ schedule.days_left }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="schedule-content">
+                            <div class="schedule-title {% if schedule.is_completed %}completed{% endif %}">
+                                {{ schedule.title }}
+                            </div>
+                            <div class="schedule-meta">
+                                {% if schedule.document %}
+                                    📄 {{ schedule.document.filename }}
+                                {% else %}
+                                    ✏️ 직접 입력
+                                {% endif %}
+                                | {{ schedule.due_date.strftime('%m/%d(%a)') }}
+                            </div>
+                        </div>
+
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <p>📭 등록된 일정이 없습니다</p>
+                        <p>문서를 업로드하거나 새 일정을 추가해보세요!</p>
+                    </div>
+                {% endif %}
+            </div>
+            <button class="btn btn-primary btn-full" onclick="openNewScheduleModal()">
+                ➕ 새 일정 추가
+            </button>
+        </div>
+    </div>
+    
+    <!-- 하단 영역: 부가기능 + 일정 상세 -->
+    <div class="dashboard-bottom">
+        <!-- 왼쪽: 부가기능 -->
+        <div class="features-section">
+            <div class="section-header">
+                <h2>🛠️ 부가기능</h2>
+            </div>
+            <div class="feature-grid">
+                <!-- 문서 업로드 -->
+                <div class="feature-card" onclick="openUploadModal()">
+                    <div class="feature-icon">📄</div>
+                    <div class="feature-name">문서 업로드</div>
+                    <div class="feature-desc">(AI 분석)</div>
+                </div>
+                
+                <!-- 팀원 일정 -->
+                <div class="feature-card" onclick="openTeamScheduleModal()">
+                    <div class="feature-icon">👥</div>
+                    <div class="feature-name">팀원 일정</div>
+                    <div class="feature-desc"></div>
+                </div>
+                
+                <!-- 일정 검색 -->
+                <div class="feature-card" onclick="openSearchModal()">
+                    <div class="feature-icon">🔍</div>
+                    <div class="feature-name">일정 검색</div>
+                    <div class="feature-desc"></div>
+                </div>
+                
+                <!-- 통계 현황 -->
+                <div class="feature-card" onclick="openStatsModal()">
+                    <div class="feature-icon">📊</div>
+                    <div class="feature-name">통계 현황</div>
+                    <div class="feature-desc"></div>
+                </div>
+                
+                <!-- 알림 설정 -->
+                <div class="feature-card" onclick="openNotificationSettings()">
+                    <div class="feature-icon">🔔</div>
+                    <div class="feature-name">알림 설정</div>
+                    <div class="feature-desc"></div>
+                </div>
+                
+                <!-- 파일 보관함 -->
+                <div class="feature-card" onclick="openFileArchive()">
+                    <div class="feature-icon">📁</div>
+                    <div class="feature-name">파일 보관함</div>
+                    <div class="feature-desc"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 오른쪽: 일정 상세/수정 -->
+        <div class="detail-section">
+            <div class="section-header">
+                <h2>📝 일정 상세</h2>
+            </div>
+            <div class="detail-content" id="schedule-detail">
+                <div class="empty-state">
+                    <p>👆 일정을 클릭하면 상세 정보가 표시됩니다</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 새 일정 추가 모달 -->
+<div class="modal" id="new-schedule-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>➕ 새 일정 추가</h3>
+            <button class="modal-close" onclick="closeModal('new-schedule-modal')">×</button>
+        </div>
+        <form id="new-schedule-form" method="POST" action="{{ url_for('add_schedule') }}">
+            <div class="form-group">
+                <label for="new-title">제목 *</label>
+                <input type="text" id="new-title" name="title" required placeholder="일정 제목">
+            </div>
+            <div class="form-group">
+                <label for="new-task">할 일 내용 *</label>
+                <textarea id="new-task" name="task_description" required placeholder="해야 할 일을 상세히 입력하세요"></textarea>
+            </div>
+            
+            <!-- 종일 여부 -->
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="new-all-day" name="is_all_day" checked onchange="toggleTimeFields('new')">
+                    종일 일정
+                </label>
+            </div>
+            
+            <!-- 날짜 -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="new-start-date">시작일 *</label>
+                    <input type="date" id="new-start-date" name="start_date" required>
+                </div>
+                <div class="form-group">
+                    <label for="new-due-date">종료일 *</label>
+                    <input type="date" id="new-due-date" name="due_date" required>
+                </div>
+            </div>
+            
+            <!-- 시간 (종일이 아닐 때만 표시) -->
+            <div class="form-row time-fields" id="new-time-fields" style="display: none;">
+                <div class="form-group">
+                    <label for="new-start-time">시작 시간</label>
+                    <input type="time" id="new-start-time" name="start_time">
+                </div>
+                <div class="form-group">
+                    <label for="new-end-time">종료 시간</label>
+                    <input type="time" id="new-end-time" name="end_time">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="new-type">일정 유형</label>
+                <select id="new-type" name="schedule_type">
+                    <option value="other">기타</option>
+                    <option value="deadline">마감</option>
+                    <option value="submit">제출</option>
+                    <option value="trip">출장</option>
+                    <option value="meeting">회의</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="new-tags">태그 (쉼표로 구분)</label>
+                <input type="text" id="new-tags" name="tags" placeholder="#업무, #중요">
+            </div>
+            <div class="form-group">
+                <label for="new-memo">메모</label>
+                <textarea id="new-memo" name="memo" placeholder="추가 메모"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('new-schedule-modal')">취소</button>
+                <button type="submit" class="btn btn-primary">저장</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 문서 업로드 모달 -->
+<div class="modal" id="upload-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>📄 문서 업로드 (AI 일정 추출)</h3>
+            <button class="modal-close" onclick="closeModal('upload-modal')">×</button>
+        </div>
+        <form id="upload-form" method="POST" action="{{ url_for('upload_document') }}" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="document">파일 선택</label>
+                <input type="file" id="document" name="document" accept=".hwp,.hwpx,.docx,.doc,.pdf" required>
+                <p class="form-hint">지원 형식: HWP, HWPX, DOCX, DOC, PDF (최대 16MB)</p>
+            </div>
+            <div class="upload-preview" id="upload-preview">
+                <p>파일을 선택하면 AI가 자동으로 일정을 추출합니다.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('upload-modal')">취소</button>
+                <button type="submit" class="btn btn-primary">업로드 및 분석</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 일정 수정 모달 -->
+<div class="modal" id="edit-schedule-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>✏️ 일정 수정</h3>
+            <button class="modal-close" onclick="closeModal('edit-schedule-modal')">×</button>
+        </div>
+        <form id="edit-schedule-form" method="POST">
+            <input type="hidden" id="edit-id" name="id">
+            <div class="form-group">
+                <label for="edit-title">제목 *</label>
+                <input type="text" id="edit-title" name="title" required>
+            </div>
+            <div class="form-group">
+                <label for="edit-task">할 일 내용 *</label>
+                <textarea id="edit-task" name="task_description" required></textarea>
+            </div>
+            
+            <!-- 종일 여부 -->
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="edit-all-day" name="is_all_day" onchange="toggleTimeFields('edit')">
+                    종일 일정
+                </label>
+            </div>
+            
+            <!-- 날짜 -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="edit-start-date">시작일 *</label>
+                    <input type="date" id="edit-start-date" name="start_date" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-due-date">종료일 *</label>
+                    <input type="date" id="edit-due-date" name="due_date" required>
+                </div>
+            </div>
+            
+            <!-- 시간 -->
+            <div class="form-row time-fields" id="edit-time-fields" style="display: none;">
+                <div class="form-group">
+                    <label for="edit-start-time">시작 시간</label>
+                    <input type="time" id="edit-start-time" name="start_time">
+                </div>
+                <div class="form-group">
+                    <label for="edit-end-time">종료 시간</label>
+                    <input type="time" id="edit-end-time" name="end_time">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="edit-type">일정 유형</label>
+                <select id="edit-type" name="schedule_type">
+                    <option value="other">기타</option>
+                    <option value="deadline">마감</option>
+                    <option value="submit">제출</option>
+                    <option value="trip">출장</option>
+                    <option value="meeting">회의</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="edit-tags">태그</label>
+                <input type="text" id="edit-tags" name="tags">
+            </div>
+            <div class="form-group">
+                <label for="edit-memo">메모</label>
+                <textarea id="edit-memo" name="memo"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="edit-completed" name="is_completed">
+                    완료됨
+                </label>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" onclick="deleteSchedule()">삭제</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('edit-schedule-modal')">취소</button>
+                <button type="submit" class="btn btn-primary">저장</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 팀원 일정 모달 -->
+<div class="modal" id="team-schedule-modal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h3>👥 팀원 일정</h3>
+            <button class="modal-close" onclick="closeModal('team-schedule-modal')">×</button>
+        </div>
+        <div class="team-schedule-content" id="team-schedule-content">
+            <p>팀원들의 일정을 불러오는 중...</p>
+        </div>
+    </div>
+</div>
+
+<!-- 검색 모달 -->
+<div class="modal" id="search-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>🔍 일정 검색</h3>
+            <button class="modal-close" onclick="closeModal('search-modal')">×</button>
+        </div>
+        <div class="form-group">
+            <input type="text" id="search-input" placeholder="검색어 입력..." onkeyup="searchSchedules()">
+        </div>
+        <div class="search-results" id="search-results">
+            <p>검색어를 입력하세요</p>
+        </div>
+    </div>
+</div>
+
+<!-- 통계 모달 -->
+<div class="modal" id="stats-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>📊 통계 현황</h3>
+            <button class="modal-close" onclick="closeModal('stats-modal')">×</button>
+        </div>
+        <div class="stats-content" id="stats-content">
+            <div class="stat-item">
+                <span class="stat-label">전체 일정</span>
+                <span class="stat-value">{{ stats.total }}</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">완료</span>
+                <span class="stat-value text-success">{{ stats.completed }}</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">진행 중</span>
+                <span class="stat-value text-primary">{{ stats.pending }}</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">지연</span>
+                <span class="stat-value text-danger">{{ stats.overdue }}</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">완료율</span>
+                <span class="stat-value">{{ stats.completion_rate }}%</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 캘린더 초기화
+    document.addEventListener('DOMContentLoaded', function() {
+        var calendarEl = document.getElementById('calendar');
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'ko',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek'
+            },
+            events: '/api/schedules',
+            dateClick: function(info) {
+                // 날짜 클릭 시 새 일정 추가
+                document.getElementById('new-due-date').value = info.dateStr;
+                openNewScheduleModal();
+            },
+            eventClick: function(info) {
+                // 일정 클릭 시 상세 보기
+                viewSchedule(info.event.id);
+            },
+            eventDidMount: function(info) {
+                // 완료된 일정 스타일
+                if (info.event.extendedProps.is_completed) {
+                    info.el.style.opacity = '0.6';
+                    info.el.style.textDecoration = 'line-through';
+                }
+            }
+        });
+        calendar.render();
+        
+        // 전역 변수로 저장
+        window.calendar = calendar;
+    });
+    
+    // 일정 상세 보기
+    function viewSchedule(id) {
+        fetch('/api/schedule/' + id)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const schedule = data.schedule;
+                    const detailHtml = `
+                        <div class="detail-card">
+                            <h3>${schedule.title}</h3>
+                            <div class="detail-row">
+                                <span class="detail-label">📅 마감일</span>
+                                <span class="detail-value">${schedule.due_date}</span>
+                            </div>
+                            ${schedule.end_date ? `
+                            <div class="detail-row">
+                                <span class="detail-label">📅 종료일</span>
+                                <span class="detail-value">${schedule.end_date}</span>
+                            </div>
+                            ` : ''}
+                            <div class="detail-row">
+                                <span class="detail-label">📁 원본</span>
+                                <span class="detail-value">${schedule.document_filename || '직접 입력'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">🏷️ 유형</span>
+                                <span class="detail-value">${getTypeLabel(schedule.schedule_type)}</span>
+                            </div>
+                            ${schedule.tags ? `
+                            <div class="detail-row">
+                                <span class="detail-label">🏷️ 태그</span>
+                                <span class="detail-value">${schedule.tags}</span>
+                            </div>
+                            ` : ''}
+                            <div class="detail-row">
+                                <span class="detail-label">✅ 할 일</span>
+                                <span class="detail-value">${schedule.task_description}</span>
+                            </div>
+                            ${schedule.memo ? `
+                            <div class="detail-row">
+                                <span class="detail-label">📝 메모</span>
+                                <span class="detail-value">${schedule.memo}</span>
+                            </div>
+                            ` : ''}
+                            <div class="detail-actions">
+                                <button class="btn btn-secondary" onclick="openEditModal(${schedule.id})">수정</button>
+                                <button class="btn btn-danger" onclick="confirmDelete(${schedule.id})">삭제</button>
+                                ${!schedule.is_completed ? 
+                                    `<button class="btn btn-success" onclick="completeSchedule(${schedule.id})">완료✓</button>` 
+                                    : ''
+                                }
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById('schedule-detail').innerHTML = detailHtml;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+    
+    // 일정 유형 라벨
+    function getTypeLabel(type) {
+        const labels = {
+            'deadline': '마감',
+            'submit': '제출',
+            'trip': '출장',
+            'meeting': '회의',
+            'other': '기타'
+        };
+        return labels[type] || '기타';
+    }
+    
+    // 새 일정 모달 열기
+    function openNewScheduleModal() {
+        document.getElementById('new-schedule-modal').classList.add('active');
+        // 오늘 날짜를 기본값으로
+        if (!document.getElementById('new-due-date').value) {
+            document.getElementById('new-due-date').value = new Date().toISOString().split('T')[0];
+        }
+    }
+    
+    // 문서 업로드 모달 열기
+    function openUploadModal() {
+        document.getElementById('upload-modal').classList.add('active');
+    }
+    
+    // 수정 모달 열기
+    function openEditModal(id) {
+        fetch('/api/schedule/' + id)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const schedule = data.schedule;
+                    document.getElementById('edit-id').value = schedule.id;
+                    document.getElementById('edit-title').value = schedule.title;
+                    document.getElementById('edit-task').value = schedule.task_description;
+                    document.getElementById('edit-due-date').value = schedule.due_date;
+                    document.getElementById('edit-end-date').value = schedule.end_date || '';
+                    document.getElementById('edit-type').value = schedule.schedule_type;
+                    document.getElementById('edit-tags').value = schedule.tags || '';
+                    document.getElementById('edit-memo').value = schedule.memo || '';
+                    document.getElementById('edit-completed').checked = schedule.is_completed;
+                    document.getElementById('edit-schedule-form').action = '/schedule/' + schedule.id + '/update';
+                    document.getElementById('edit-schedule-modal').classList.add('active');
+                }
+            });
+    }
+    
+    // 팀원 일정 모달
+    function openTeamScheduleModal() {
+        document.getElementById('team-schedule-modal').classList.add('active');
+        fetch('/api/team-schedules')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    let html = '';
+                    for (const [username, schedules] of Object.entries(data.team_schedules)) {
+                        html += `<div class="team-member">
+                            <h4>👤 ${username}</h4>
+                            <ul>`;
+                        schedules.forEach(s => {
+                            html += `<li>${s.due_date}: ${s.title}</li>`;
+                        });
+                        html += `</ul></div>`;
+                    }
+                    document.getElementById('team-schedule-content').innerHTML = html || '<p>팀원 일정이 없습니다.</p>';
+                }
+            });
+    }
+    
+    // 검색 모달
+    function openSearchModal() {
+        document.getElementById('search-modal').classList.add('active');
+        document.getElementById('search-input').focus();
+    }
+    
+    // 통계 모달
+    function openStatsModal() {
+        document.getElementById('stats-modal').classList.add('active');
+    }
+    
+    // 알림 설정
+    function openNotificationSettings() {
+        alert('알림 설정 기능은 추후 업데이트 예정입니다.');
+    }
+    
+    // 파일 보관함
+    function openFileArchive() {
+        window.location.href = '/files';
+    }
+    
+    // 모달 닫기
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('active');
+    }
+    
+    // 일정 삭제 확인
+    function confirmDelete(id) {
+        if (confirm('정말 삭제하시겠습니까?')) {
+            fetch('/schedule/' + id + '/delete', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert(data.message);
+                    }
+                });
+        }
+    }
+    
+    // 일정 완료
+    function completeSchedule(id) {
+        fetch('/schedule/' + id + '/complete', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message);
+                }
+            });
+    }
+    
+    // 일정 검색
+    function searchSchedules() {
+        const query = document.getElementById('search-input').value;
+        if (query.length < 2) {
+            document.getElementById('search-results').innerHTML = '<p>2자 이상 입력하세요</p>';
+            return;
+        }
+        
+        fetch('/api/search?q=' + encodeURIComponent(query))
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.schedules.length > 0) {
+                    let html = '<ul class="search-list">';
+                    data.schedules.forEach(s => {
+                        html += `<li onclick="viewSchedule(${s.id}); closeModal('search-modal');">
+                            <strong>${s.title}</strong><br>
+                            <small>${s.due_date}</small>
+                        </li>`;
+                    });
+                    html += '</ul>';
+                    document.getElementById('search-results').innerHTML = html;
+                } else {
+                    document.getElementById('search-results').innerHTML = '<p>검색 결과가 없습니다.</p>';
+                }
+            });
+    }
+    
+    // 모달 외부 클릭 시 닫기
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal')) {
+            e.target.classList.remove('active');
+        }
+    });
+    
+    // ESC 키로 모달 닫기
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal.active').forEach(modal => {
+                modal.classList.remove('active');
+            });
+        }
+    });
+</script>
+{% endblock %}

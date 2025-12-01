@@ -1,0 +1,75 @@
+<!-- ============================================
+     업무 일정 관리 시스템 - 기본 템플릿
+     위치: C:\Users\user\Desktop\인공지능산업협회AI\templates\base.html
+     ============================================ -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}업무 일정 관리{% endblock %}</title>
+    
+    <!-- FullCalendar CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+    
+    <!-- 커스텀 CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- 네비게이션 바 -->
+    {% if current_user.is_authenticated %}
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <a href="{{ url_for('dashboard') }}">📅 업무 일정 관리 시스템</a>
+        </div>
+        <div class="navbar-menu">
+            <span class="user-info">
+                👤 {{ current_user.username }}님
+                {% if current_user.team %}
+                ({{ current_user.team.name }})
+                {% elif current_user.company %}
+                ({{ current_user.company.name }})
+                {% endif %}
+            </span>
+            <a href="{{ url_for('dashboard') }}" class="nav-link">대시보드</a>
+            <a href="{{ url_for('company_page') }}" class="nav-link">🏢 회사/팀</a>
+            <a href="{{ url_for('logout') }}" class="nav-link logout">로그아웃</a>
+        </div>
+    </nav>
+    {% endif %}
+    
+    <!-- 알림 메시지 -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}">
+                        {{ message }}
+                        <button class="flash-close" onclick="this.parentElement.remove()">×</button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    
+    <!-- 메인 컨텐츠 -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- 푸터 -->
+    <footer class="footer">
+        <p>© 2024 업무 일정 관리 시스템 | 로컬 AI 기반</p>
+    </footer>
+    
+    <!-- FullCalendar JS -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    
+    <!-- 커스텀 JS -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
