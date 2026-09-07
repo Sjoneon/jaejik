@@ -1,6 +1,7 @@
 # 📅 Work Schedule Management System
 # 업무 일정 관리 시스템
 > 해당 프로젝트는 windsurf IDE에서 ollama API를 이용하여 AI 프롬프팅만으로 구축한 Local 프로젝트입니다.
+
 > AI가 문서에서 자동으로 일정을 추출하여 캘린더에 등록해주는 팀 협업 일정 관리 시스템
 
 ![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
